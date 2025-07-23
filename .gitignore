@@ -1,1 +1,33 @@
 dataset
+
+# Byte-code files
+*.pyc
+__pycache__/
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# IDE/Editor specific files
+.idea/
+.vscode/
+.spyderproject/
+.spyproject/
+
+# Sensitive files
+.env
+local_settings.py
+db.sqlite3
+
+# Build artifacts and test reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+*.cover
+.pytest_cache/
+
+# Documentation builds
+docs/_build/
+/site
