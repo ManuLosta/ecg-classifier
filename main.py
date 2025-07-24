@@ -1,48 +1,39 @@
-from src.data.ptbxl_loader import PTBXLDataset
 import matplotlib.pyplot as plt
 import numpy as np
 
+from src.data.ptbxl_loader import PTBXLDataset
+from src.utils.preprocessing import ECGPreprocessor, ECGDataModule
+
+
 def main():
-    data_path = 'dataset'
+    data_path = "dataset"
     ptbxl_dataset = PTBXLDataset(data_path)
 
-    # Get the dataset splits
-    (X_train, y_train), (X_val, y_val), (X_test, y_test), class_names = ptbxl_dataset.get_dataset()
-    
-    print(f"Training data shape: {X_train.shape}")
-    print(f"Training labels shape: {y_train.shape}")
-    print(f"Number of classes: {len(class_names)}")
+    (X_train, y_train), (X_val, y_val), (X_test, y_test), class_names = (
+        ptbxl_dataset.get_dataset()
+    )
+
+    print(f"Dataset loaded")
+    print(f"Train set shape: {X_train.shape}, {y_train.shape}")
+    print(f"Validation set shape: {X_val.shape}, {y_val.shape}")
+    print(f"Test set shape: {X_test.shape}, {y_test.shape}")
     print(f"Class names: {class_names}")
-    
-    # Calculate class distribution in training data
-    class_counts = np.sum(y_train, axis=0)
-    class_percentages = (class_counts / len(y_train)) * 100
-    
-    # Create bar plot for class distribution
-    plt.figure(figsize=(12, 8))
-    bars = plt.bar(range(len(class_names)), class_counts, color='skyblue', edgecolor='navy', alpha=0.7)
-    
-    # Customize the plot
-    plt.xlabel('Diagnostic Classes', fontsize=12)
-    plt.ylabel('Number of Samples', fontsize=12)
-    plt.title('Distribution of Diagnostic Classes in Training Data', fontsize=14, fontweight='bold')
-    plt.xticks(range(len(class_names)), class_names, rotation=45, ha='right')
-    
-    # Add value labels on top of bars
-    for i, (bar, count, percentage) in enumerate(zip(bars, class_counts, class_percentages)):
-        plt.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 10,
-                f'{count}\n({percentage:.1f}%)', 
-                ha='center', va='bottom', fontsize=10)
-    
-    plt.tight_layout()
-    plt.grid(axis='y', alpha=0.3)
-    plt.show()
-    
-    # Print detailed statistics
-    print("\nClass Distribution Statistics:")
-    print("-" * 50)
-    for i, class_name in enumerate(class_names):
-        print(f"{class_name}: {class_counts[i]} samples ({class_percentages[i]:.2f}%)")
+
+    preprocessor = ECGPreprocessor(sampling_rate=100, target_length=1000)
+    X_train = preprocessor.preprocess(X_train, apply_filters=True)
+    X_val = preprocessor.preprocess(X_val, apply_filters=True)
+    X_test = preprocessor.preprocess(X_test, apply_filters=True)
+
+    data_module = ECGDataModule(
+        X_train=X_train,
+        y_train=y_train,
+        X_val=X_val,
+        y_val=y_val,
+        X_test=X_test,
+        y_test=y_test,
+        batch_size=32,
+    )
+    train_loader, val_loader, test_loader = data_module.get_dataloaders()
 
 if __name__ == "__main__":
     main()
