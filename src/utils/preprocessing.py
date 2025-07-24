@@ -89,12 +89,12 @@ class ECGDataModule:
         self.batch_size = batch_size
         self.num_workers = num_workers
 
-        self.X_train = torch.utils.data.FloatTensor(X_train)
-        self.y_train = torch.utils.data.FloatTensor(y_train)
-        self.X_val = torch.utils.data.FloatTensor(X_val)
-        self.y_val = torch.utils.data.FloatTensor(y_val)
-        self.X_test = torch.utils.data.FloatTensor(X_test)
-        self.y_test = torch.utils.data.FloatTensor(y_test)
+        self.X_train = torch.FloatTensor(X_train)
+        self.y_train = torch.FloatTensor(y_train)
+        self.X_val = torch.FloatTensor(X_val)
+        self.y_val = torch.FloatTensor(y_val)
+        self.X_test = torch.FloatTensor(X_test)
+        self.y_test = torch.FloatTensor(y_test)
 
     def get_dataloaders(
         self,
