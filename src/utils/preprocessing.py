@@ -1,8 +1,6 @@
 from sklearn.preprocessing import StandardScaler
 from scipy.signal import butter, filtfilt, iirnotch
 import numpy as np
-import torch
-import torch.nn as nn
 from typing import Tuple
 
 
@@ -72,59 +70,3 @@ class ECGPreprocessor:
         preproccessed_data = self.normalize(preproccessed_data)
 
         return preproccessed_data
-
-
-class ECGDataModule:
-    def __init__(
-        self,
-        X_train: np.ndarray,
-        y_train: np.ndarray,
-        X_val: np.ndarray,
-        y_val: np.ndarray,
-        X_test: np.ndarray,
-        y_test: np.ndarray,
-        batch_size: int = 32,
-        num_workers: int = 4,
-    ):
-        self.batch_size = batch_size
-        self.num_workers = num_workers
-
-        self.X_train = torch.FloatTensor(X_train)
-        self.y_train = torch.FloatTensor(y_train)
-        self.X_val = torch.FloatTensor(X_val)
-        self.y_val = torch.FloatTensor(y_val)
-        self.X_test = torch.FloatTensor(X_test)
-        self.y_test = torch.FloatTensor(y_test)
-
-    def get_dataloaders(
-        self,
-    ) -> Tuple[
-        torch.utils.data.DataLoader,
-        torch.utils.data.DataLoader,
-        torch.utils.data.DataLoader,
-    ]:
-        train_dataset = torch.utils.data.TensorDataset(self.X_train, self.y_train)
-        train_loader = torch.utils.data.DataLoader(
-            train_dataset,
-            batch_size=self.batch_size,
-            shuffle=True,
-            num_workers=self.num_workers,
-        )
-
-        val_dataset = torch.utils.data.TensorDataset(self.X_val, self.y_val)
-        val_loader = torch.utils.data.DataLoader(
-            val_dataset,
-            batch_size=self.batch_size,
-            shuffle=False,
-            num_workers=self.num_workers,
-        )
-
-        test_dataset = torch.utils.data.TensorDataset(self.X_test, self.y_test)
-        test_loader = torch.utils.data.DataLoader(
-            test_dataset,
-            batch_size=self.batch_size,
-            shuffle=False,
-            num_workers=self.num_workers,
-        )
-
-        return train_loader, val_loader, test_loader

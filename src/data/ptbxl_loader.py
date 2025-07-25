@@ -53,7 +53,9 @@ class PTBXLDataset:
         data = np.array([signal for signal, meta in data])
         return data
 
-    def prepare_labels(self, df: pd.DataFrame) -> Tuple[np.ndarray, List[str]]:
+    def prepare_labels(
+        self, df: pd.DataFrame
+    ) -> Tuple[np.ndarray, List[int], List[str]]:
         scp_statements = self.load_scp_statements()
 
         diagnostic_superclasses = (
@@ -62,23 +64,36 @@ class PTBXLDataset:
             .unique()
             .tolist()
         )
+        diagnostic_superclasses.sort()
+        superclass_to_idx = {name: i for i, name in enumerate(diagnostic_superclasses)}
 
-        y = np.zeros((len(df), len(diagnostic_superclasses)), dtype=int)
+        y_labels = []
+        valid_ecg_ids = []
 
-        for i, scp_codes in enumerate(df.scp_codes):
+        for ecg_id, row in df.iterrows():
             record_superclasses = (
                 scp_statements.loc[
-                    scp_statements.index.isin(scp_codes), "diagnostic_class"
+                    scp_statements.index.isin(row.scp_codes), "diagnostic_class"
                 ]
                 .dropna()
                 .unique()
+                .tolist()
             )
 
-            for superclass in record_superclasses:
-                if superclass in diagnostic_superclasses:
-                    y[i, diagnostic_superclasses.index(superclass)] = 1
+            valid_record_superclasses = [
+                sc for sc in record_superclasses if sc in diagnostic_superclasses
+            ]
 
-        return y, diagnostic_superclasses
+            if valid_record_superclasses:
+                selected_superclass = valid_record_superclasses[0]
+                y_labels.append(superclass_to_idx[selected_superclass])
+                valid_ecg_ids.append(ecg_id)
+
+        return (
+            np.array(y_labels, dtype=np.int64),
+            valid_ecg_ids,
+            diagnostic_superclasses,
+        )
 
     def split_data(
         self, stratify_col: str = "strat_fold", test_fold: int = 10
@@ -107,8 +122,12 @@ class PTBXLDataset:
         X_val = self.load_raw_data(val_df)
         X_test = self.load_raw_data(test_df)
 
-        y_train, class_names = self.prepare_labels(train_df)
-        y_val, _ = self.prepare_labels(val_df)
-        y_test, _ = self.prepare_labels(test_df)
+        y_train, valid_train_ids, class_names = self.prepare_labels(train_df)
+        y_val, valid_val_ids, _ = self.prepare_labels(val_df)
+        y_test, valid_test_ids, _ = self.prepare_labels(test_df)
+
+        X_train = X_train[train_df.index.isin(valid_train_ids)]
+        X_val = X_val[val_df.index.isin(valid_val_ids)]
+        X_test = X_test[test_df.index.isin(valid_test_ids)]
 
         return (X_train, y_train), (X_val, y_val), (X_test, y_test), class_names

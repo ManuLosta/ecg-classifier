@@ -31,3 +31,5 @@ htmlcov/
 # Documentation builds
 docs/_build/
 /site
+
+.DS_Store

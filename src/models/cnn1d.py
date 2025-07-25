@@ -1,69 +1,66 @@
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
+import tensorflow as tf
+from tensorflow.keras import layers, models
 
 
-class ResidualBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, downsample=None):
-        super(ResidualBlock, self).__init__()
-        self.conv1 = nn.Conv1d(in_channels, out_channels, kernel_size, stride, padding=kernel_size // 2)
-        self.bn1 = nn.BatchNorm1d(out_channels)
-        self.conv2 = nn.Conv1d(out_channels, out_channels, kernel_size, stride=1, padding=kernel_size // 2)
-        self.bn2 = nn.BatchNorm1d(out_channels)
-        self.downsample = downsample
+def create_cnn1d_model(input_shape, num_classes):
+    """
+    Create a CNN1D model with the paper architecture using TensorFlow/Keras.
 
-    def forward(self, x):
-        identity = x
-        if self.downsample is not None:
-            identity = self.downsample(x)
+    Args:
+        input_shape: Tuple of (sequence_length, input_channels)
+        num_classes: Number of output classes
 
-        out = F.relu(self.bn1(self.conv1(x)))
-        out = self.bn2(self.conv2(out))
-        out += identity
-        return F.relu(out)
+    Returns:
+        A Keras model instance.
+    """
+    inputs = layers.Input(shape=input_shape)
 
+    # Large block with parallel branches
+    branch1 = layers.Conv1D(64, kernel_size=7, padding="same", activation="relu")(
+        inputs
+    )
+    branch2 = layers.Conv1D(64, kernel_size=5, padding="same", activation="relu")(
+        inputs
+    )
+    branch3 = layers.Conv1D(64, kernel_size=3, padding="same", activation="relu")(
+        inputs
+    )
+    branch4 = layers.Conv1D(64, kernel_size=1, padding="same", activation="relu")(
+        inputs
+    )
 
-class ResNet1D(nn.Module):
-    def __init__(self, input_channels: int, num_classes: int):
-        super(ResNet1D, self).__init__()
+    # Concatenate all branches
+    concatenated = layers.Concatenate()([branch1, branch2, branch3, branch4])
 
-        self.initial_conv = nn.Conv1d(input_channels, 64, kernel_size=7, stride=2, padding=3)
-        self.initial_bn = nn.BatchNorm1d(64)
-        self.initial_pool = nn.MaxPool1d(kernel_size=3, stride=2, padding=1)
+    # Small blocks
+    sb1 = layers.Conv1D(64, kernel_size=7, padding="same", activation="relu")(
+        concatenated
+    )
+    sb1 = layers.MaxPooling1D(pool_size=2)(sb1)
+    sb1 = layers.Dropout(0.3)(sb1)
 
-        self.layer1 = self._make_layer(64, 64, num_blocks=2)
-        self.layer2 = self._make_layer(64, 128, num_blocks=2, stride=2)
-        self.layer3 = self._make_layer(128, 256, num_blocks=2, stride=2)
-        self.layer4 = self._make_layer(256, 512, num_blocks=2, stride=2)
+    sb2 = layers.Conv1D(64, kernel_size=5, padding="same", activation="relu")(
+        concatenated
+    )
+    sb2 = layers.MaxPooling1D(pool_size=2)(sb2)
+    sb2 = layers.Dropout(0.3)(sb2)
 
-        self.global_avg_pool = nn.AdaptiveAvgPool1d(1)
-        self.fc = nn.Linear(512, num_classes)
+    sb3 = layers.Conv1D(64, kernel_size=1, padding="same", activation="relu")(
+        concatenated
+    )
+    sb3 = layers.MaxPooling1D(pool_size=2)(sb3)
+    sb3 = layers.Dropout(0.3)(sb3)
 
-    def _make_layer(self, in_channels, out_channels, num_blocks, stride=1):
-        downsample = None
-        if stride != 1 or in_channels != out_channels:
-            downsample = nn.Sequential(
-                nn.Conv1d(in_channels, out_channels, kernel_size=1, stride=stride),
-                nn.BatchNorm1d(out_channels),
-            )
+    # Concatenate small block outputs
+    merged = layers.Concatenate()([sb1, sb2, sb3])
 
-        layers = [ResidualBlock(in_channels, out_channels, stride=stride, downsample=downsample)]
-        for _ in range(1, num_blocks):
-            layers.append(ResidualBlock(out_channels, out_channels))
+    # Global average pooling
+    pooled = layers.GlobalAveragePooling1D()(merged)
 
-        return nn.Sequential(*layers)
+    # Fully connected layers
+    dense1 = layers.Dense(64, activation="relu")(pooled)
+    dense1 = layers.Dropout(0.3)(dense1)
+    outputs = layers.Dense(num_classes, activation="softmax")(dense1)
 
-    def forward(self, x):
-        x = F.relu(self.initial_bn(self.initial_conv(x)))
-        x = self.initial_pool(x)
-
-        x = self.layer1(x)
-        x = self.layer2(x)
-        x = self.layer3(x)
-        x = self.layer4(x)
-
-        x = self.global_avg_pool(x)
-        x = torch.flatten(x, 1)
-        x = self.fc(x)
-
-        return x
+    model = models.Model(inputs=inputs, outputs=outputs)
+    return model
