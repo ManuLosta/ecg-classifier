@@ -3,16 +3,6 @@ from tensorflow.keras import layers, models
 
 
 def create_cnn1d_model(input_shape, num_classes):
-    """
-    Create a CNN1D model with the paper architecture using TensorFlow/Keras.
-
-    Args:
-        input_shape: Tuple of (sequence_length, input_channels)
-        num_classes: Number of output classes
-
-    Returns:
-        A Keras model instance.
-    """
     inputs = layers.Input(shape=input_shape)
 
     # Large block with parallel branches
