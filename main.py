@@ -14,7 +14,7 @@ import numpy as np
 from src.data.ptbxl_loader import PTBXLDataset
 from src.utils.preprocessing import ECGPreprocessor
 from src.models.cnn1d import create_cnn1d_model
-from src.utils.evaluation import save_confusion_matrix
+from src.utils.evaluation import save_confusion_matrix, save_training_history
 
 
 def main():
@@ -59,22 +59,23 @@ def main():
         "best_model.h5", monitor="val_loss", save_best_only=True
     )
 
-    model.fit(
+    history = model.fit(
         X_train,
         y_train,
         validation_data=(X_val, y_val),
         epochs=100,
-        batch_size=64,
+        batch_size=32,
         verbose=1,
         callbacks=[early_stopping, model_checkpoint],
     )
 
-    test_loss, test_accuracy = model.evaluate(X_test, y_test, batch_size=64, verbose=1)
+    test_loss, test_accuracy = model.evaluate(X_test, y_test, batch_size=32, verbose=1)
     print(f"Test Loss: {test_loss:.4f}, Test Accuracy: {test_accuracy:.4f}")
 
-    y_pred = np.argmax(model.predict(X_test, batch_size=64), axis=1)
+    y_pred = np.argmax(model.predict(X_test, batch_size=32), axis=1)
     y_true = np.argmax(y_test, axis=1)
     save_confusion_matrix(y_true, y_pred, class_names, output_path="confusion_matrix.png")
+    save_training_history(history, output_path="training_history.png")
 
 
 if __name__ == "__main__":

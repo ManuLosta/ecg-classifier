@@ -130,4 +130,20 @@ class PTBXLDataset:
         X_val = X_val[val_df.index.isin(valid_val_ids)]
         X_test = X_test[test_df.index.isin(valid_test_ids)]
 
+        X_train_augmented = np.array([self.augment_data(record) for record in X_train])
+        X_train = np.concatenate((X_train, X_train_augmented), axis=0)
+        y_train = np.concatenate((y_train, y_train), axis=0)
+
         return (X_train, y_train), (X_val, y_val), (X_test, y_test), class_names
+
+    def augment_data(self, record: np.ndarray) -> np.ndarray:
+        noise_factor = 0.05
+        time_shift_factor = 0.1
+
+        noise = np.random.normal(0, noise_factor, record.shape)
+        augmented_record = record + noise
+
+        shift = int(time_shift_factor * record.shape[0])
+        augmented_record = np.roll(augmented_record, shift, axis=0)
+
+        return augmented_record
